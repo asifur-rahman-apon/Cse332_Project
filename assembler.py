@@ -1,9 +1,4 @@
 
-# ==========================================
-#         10-BIT CPU ASSEMBLER
-# ==========================================
-
-#Define all 16 opcodes
 
 OPCODES = {
     "ADD":  "0000",
@@ -25,7 +20,6 @@ OPCODES = {
 }
 
 
-# Define instruction formats
 
 FORMATS = {
     "ADD": "R",
@@ -74,7 +68,7 @@ def encode_i_type(instruction, rd, immediate):
     opcode = OPCODES[instruction]
     rd_binary = REGISTERS[rd]
 
-    # Validate immediate values
+    
     if instruction == "LDI":
         if immediate < 0 or immediate > 7:
             raise ValueError("LDI immediate must be between 0 and 7")
@@ -90,7 +84,7 @@ def encode_i_type(instruction, rd, immediate):
     else:
         raise ValueError("Invalid I-type instruction")
 
-    # Convert immediate into 3-bit binary
+    
     immediate_binary = format(immediate & 0b111, "03b")
 
     machine_code = opcode + rd_binary + immediate_binary
@@ -115,13 +109,13 @@ def encode_b_type(instruction, offset):
 
 def assemble_line(line):
 
-    # Remove comments and extra spaces
+    
     line = line.split("#")[0].strip()
 
     if not line:
         return None
 
-    # Separate instruction and operands
+    
     parts = line.replace(",", " ").split()
 
     instruction = parts[0].upper()
