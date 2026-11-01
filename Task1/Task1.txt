@@ -1,0 +1,30 @@
+One of the course objectives is to be able to design a complete CPU system. It starts with learning about ISA, advanced ALU, data path and control, pipelining in theory. In order to make this learning more effective a step-by-step design of the complete CPU system is carried out through pen and paper, simulation tools, hardware etc. Students work in a group and try to develop small pieces and finally connect them to get their cpu as explained in the following diagram. The first step is done through a group assignment detailed below.
+
+Title : ISA Design         Type : Document
+Consider yourself as a computer architect, and you are employed in a vendor company. The company told you that they are going to design a new 10-bit single-cycle CPU that has separate Data and Instruction Memory. The ISA should be general-purpose enough to be able to run the provided general programs. For simplicity's and consistency’s sake, the instruction text will be fixed type (10 bit) and fewer formats are encouraged. 
+
+Input/Output Operations
+It should also be able to connect with the display unit (ex: seven segment display) to display results or any data and a keyboard or something similar to get input from the user. you should make any necessary arrangements (extra instruction or special register or any other) to accommodate this external communication into your ISA design. For example, you might consider including dedicated instructions like IN & OUT to perform the input/output operations. 
+
+
+Design requirements
+As an ISA designer, your job is to propose a detailed design of the ISA. Few of the issues probably you would have to addresses are given below:
+1) How many operands?
+2) Types of operands? 
+3) How many operations? Types of operations? Draw a table with list of instructions, instruction type, their opcode, functionality (if any)
+4) How many formats would you choose? Draw the formats along with field name and number of bits in each field
+5) List of registers? Draw a register table. (with register name and binary values)
+6) Addressing Modes (draw the various addressing modes that are useful for hardware implementations)
+
+
+Benchmark Programs
+You have to design your ISA focusing on the following three categories of programs
+a) Simple arithmetic & logic operations (Example : x = (a + b) - c;)
+
+b) Programs that require checking conditions (Example :  if (a < b)     x = a;  else     x = b; )
+
+c) Loop type of programs (Example  : sum = 0;  for (i = 0; i < 10; i++)     sum = sum + i; )
+
+To demonstrate its ability to translate high-level language, provide 3 sample HLL code and their respective translations using your proposed ISA.
+
+There is no single correct answer, but tradeoffs should be discussed. However, for each major ISA design decision, justify why the chosen approach was selected
