@@ -1,0 +1,17 @@
+Title: Assembler Type: Software (Platform: any)
+
+It is difficult and error-prone to manually write machine code. The problem can be addressed by writing an assembler, which can automatically generate machine code from an assembly file. In this part of the project, you need to write an assembler for your ISA. The assembler reads a program written using assembly language in a text file, then translates it into binary code and generates an output file(.txt) containing machine code. The generated output files will later be useful for running a program when you develop your actual CPU.
+
+Language:
+
+You can use any high-level language. 
+
+ISA:
+
+Your own ISA that you designed in the previous milestone. Make sure you have received and addressed the feedback of ISA.
+
+I/O format:
+
+The input code will be written in a text file in assembly format following your ISA. There will be one instruction per line. The output will be generated in Hexadecimal format. This will be helpful for us to later transfer this code into the RAM block of the Logisim circuit. You are also suggested printing the Binary code in the console for evaluation purposes.
+
+Online Submission: Code Only
