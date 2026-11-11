@@ -51,7 +51,14 @@ REGISTERS = {
     "R6": "110",
     "R7": "111"
 }
+def validate_register(reg):
 
+    if reg not in REGISTERS:
+        raise ValueError("Invalid register: " + reg)
+
+    if reg == "R7":
+        raise ValueError("R7 is reserved for base addressing")
+    
 def encode_r_type(instruction, rd, rs):
 
     opcode = OPCODES[instruction]
@@ -188,8 +195,8 @@ def assemble_line(line, address, labels):
 
         rd, rs = operands
 
-        if rd not in REGISTERS or rs not in REGISTERS:
-            raise ValueError("Invalid register")
+        validate_register(rd)
+        validate_register(rs)
 
         binary = encode_r_type(instruction, rd, rs)
 
@@ -200,8 +207,7 @@ def assemble_line(line, address, labels):
 
         rd = operands[0]
 
-        if rd not in REGISTERS:
-            raise ValueError("Invalid register")
+        validate_register(rd)
 
         binary = encode_r1_type(instruction, rd)
 
@@ -219,8 +225,7 @@ def assemble_line(line, address, labels):
 
         rd, immediate = operands
 
-        if rd not in REGISTERS:
-            raise ValueError("Invalid register")
+        validate_register(rd)
 
         binary = encode_i_type(
             instruction, rd, int(immediate)
