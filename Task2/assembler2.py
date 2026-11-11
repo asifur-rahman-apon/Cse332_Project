@@ -1,5 +1,4 @@
 import sys
-
 OPCODES = {
     "ADD":  "0000",
     "SUB":  "0001",
@@ -52,14 +51,7 @@ REGISTERS = {
     "R6": "110",
     "R7": "111"
 }
-def validate_register(reg):
 
-    if reg not in REGISTERS:
-        raise ValueError("Invalid register: " + reg)
-
-    if reg == "R7":
-        raise ValueError("R7 is reserved for base addressing")
-    
 def encode_r_type(instruction, rd, rs):
 
     opcode = OPCODES[instruction]
@@ -69,6 +61,7 @@ def encode_r_type(instruction, rd, rs):
     machine_code = opcode + rd_binary + rs_binary
 
     return machine_code
+
 
 def encode_r1_type(instruction, rd):
 
@@ -100,7 +93,6 @@ def encode_i_type(instruction, rd, immediate):
             raise ValueError(instruction + " immediate must be between -4 and 3")
 
     
-    
     immediate_binary = format(immediate & 0b111, "03b")
 
     machine_code = opcode + rd_binary + immediate_binary
@@ -113,6 +105,7 @@ def encode_b_type(instruction, offset):
 
     if instruction not in ["BEQ", "BLT", "JMP"]:
         raise ValueError("Invalid branch/jump instruction")
+
 
     if offset < -32 or offset > 31:
         raise ValueError("Offset must be between -32 and +31")
@@ -173,19 +166,20 @@ def assemble_line(line, address, labels):
     # drop any "label:" prefix (labels were already recorded in pass 1)
     line = line.rsplit(":", 1)[-1].strip()
 
+    # if nothing remains, return 
     if not line:
         return None
 
     
     parts = line.replace(",", " ").split()
 
-    instruction = parts[0].upper()
+    instruction = parts[0]
     operands = parts[1:]
 
     if instruction not in OPCODES:
         raise ValueError("Unknown instruction: " + instruction)
 
-    fmt = FORMATS[instruction]
+    fmt = FORMATS[instruction] # set format of current instruction
 
     if fmt == "R":
 
@@ -194,8 +188,8 @@ def assemble_line(line, address, labels):
 
         rd, rs = operands
 
-        validate_register(rd)
-        validate_register(rs)
+        if rd not in REGISTERS or rs not in REGISTERS:
+            raise ValueError("Invalid register")
 
         binary = encode_r_type(instruction, rd, rs)
 
@@ -206,7 +200,8 @@ def assemble_line(line, address, labels):
 
         rd = operands[0]
 
-        validate_register(rd)
+        if rd not in REGISTERS:
+            raise ValueError("Invalid register")
 
         binary = encode_r1_type(instruction, rd)
 
@@ -224,7 +219,8 @@ def assemble_line(line, address, labels):
 
         rd, immediate = operands
 
-        validate_register(rd)
+        if rd not in REGISTERS:
+            raise ValueError("Invalid register")
 
         binary = encode_i_type(
             instruction, rd, int(immediate)
@@ -242,7 +238,7 @@ def assemble_line(line, address, labels):
             offset = labels[target] - (address + 1)
         else:
             try:
-                offset = int(target)
+                offset = int(target) # interpret target as an immediate offset
             except ValueError:
                 raise ValueError("Undefined label: " + target)
 
@@ -260,17 +256,21 @@ print("\nStarting Assembler...\n")
 machine_codes = []
 errors = []
 
-input_file = sys.argv[1] if len(sys.argv) > 1 else input("Enter assembly filename: ")
+if len(sys.argv) > 1:
+    input_file = sys.argv[1].strip()
+else:
+    user_input = input("Enter assembly filename (default: program.asm): ").strip()
+    input_file = user_input if user_input else "program.asm"
 
 try:
     with open(input_file, "r") as file:
         lines = file.readlines()
-
 except FileNotFoundError:
-    print("Error: Input file not found.")
+    print(f"Error: Input file '{input_file}' not found.")
     sys.exit(1)
 
 labels, addresses = first_pass(lines, errors)
+
 
 for line_number, line in enumerate(lines, start=1):
 
