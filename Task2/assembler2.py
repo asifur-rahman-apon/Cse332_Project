@@ -258,8 +258,13 @@ errors = []
 
 input_file = input("Enter assembly filename: ")
 
-with open(input_file, "r") as file:
-    lines = file.readlines()
+try:
+    with open(input_file, "r") as file:
+        lines = file.readlines()
+
+except FileNotFoundError:
+    print("Error: Input file not found.")
+    exit()
 
 labels, addresses = first_pass(lines, errors)
 
