@@ -1,3 +1,4 @@
+import sys
 
 OPCODES = {
     "ADD":  "0000",
@@ -98,9 +99,7 @@ def encode_i_type(instruction, rd, immediate):
         if immediate < -4 or immediate > 3:
             raise ValueError(instruction + " immediate must be between -4 and 3")
 
-    else:
-        raise ValueError("Invalid I-type instruction")
-
+    
     
     immediate_binary = format(immediate & 0b111, "03b")
 
@@ -261,7 +260,7 @@ print("\nStarting Assembler...\n")
 machine_codes = []
 errors = []
 
-input_file = input("Enter assembly filename: ")
+input_file = sys.argv[1] if len(sys.argv) > 1 else input("Enter assembly filename: ")
 
 try:
     with open(input_file, "r") as file:
@@ -269,7 +268,7 @@ try:
 
 except FileNotFoundError:
     print("Error: Input file not found.")
-    exit()
+    sys.exit(1)
 
 labels, addresses = first_pass(lines, errors)
 
