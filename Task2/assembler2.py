@@ -256,8 +256,9 @@ print("\nStarting Assembler...\n")
 machine_codes = []
 errors = []
 
-with open("program.asm", "r") as file:
+input_file = input("Enter assembly filename: ")
 
+with open(input_file, "r") as file:
     lines = file.readlines()
 
 labels, addresses = first_pass(lines, errors)
