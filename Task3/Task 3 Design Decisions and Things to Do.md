@@ -8,21 +8,38 @@ Opcode bits are written `o3 o2 o1 o0` (o3 is the MSB, bit 9 of the instruction).
 
 The control unit has two kinds of outputs:
 
-- **Direct taps:** signals wired straight from opcode bits with no logic. These exist because of the opcode reordering (sections 3 to 5).
+- **Direct taps:** signals wired straight from opcode bits with no logic. These exist because of the opcode ordering below (explained in sections 3 to 5).
 - **Decoder-generated:** every other signal. The opcode goes through a 4-to-16 decoder, and each signal is an OR (or AND-OR, for `Branch`) of the decoder outputs for the instructions that need it.
 
-### Decoder outputs
+### Opcode assignment
 
-| Output | Instr | Output | Instr |
+| Opcode | Decoder output | Instruction | Type |
 |---|---|---|---|
-| D0 | ADD | D8 | LW |
-| D1 | ADDI | D9 | SW |
-| D2 | AND | D10 | IN |
-| D3 | OR | D11 | OUT |
-| D4 | SUB | D12 | BEQ |
-| D5 | CMP | D13 | BLT |
-| D6 | SLL | D14 | JMP |
-| D7 | (unused) | D15 | HALT |
+| 0000 | D0 | ADD | R |
+| 0001 | D1 | **ADDI** | I |
+| 0010 | D2 | AND | R |
+| 0011 | D3 | OR | R |
+| 0100 | D4 | **SUB** | R |
+| 0101 | D5 | CMP | R |
+| 0110 | D6 | **SLL** | R |
+| 0111 | D7 | (unused) | |
+| 1000 | D8 | LW | I |
+| 1001 | D9 | SW | I |
+| 1010 | D10 | IN | R |
+| 1011 | D11 | OUT | R |
+| 1100 | D12 | BEQ | B/J |
+| 1101 | D13 | BLT | B/J |
+| 1110 | D14 | JMP | B/J |
+| 1111 | D15 | HALT | R |
+
+Bold marks the three instructions whose opcodes changed from the original ISA (ADDI was 0110, SUB was 0001, SLL was 0100).
+
+**Why this order.** The ALU-using instructions are arranged so the ALU's controls can be read straight off the opcode:
+- **`BInvert = o2`.** The two instructions that subtract (SUB, CMP) both sit in the `o2 = 1` half. Every other ALU-using instruction has `o2 = 0`.
+- **`AluOp = o1 o0`.** In each half, the low two bits select the function: `00` and `01` both mean add, `10` is AND, and `11` is OR.
+- **`WriteBackSrc = {o3, o1}`.** The two non-ALU register sources (LW and IN) are the only register-writing instructions with `o3 = 1`, and they differ in `o1`.
+
+Sections 3 to 5 give the full reasoning.
 
 ### Signal definitions
 
@@ -47,6 +64,7 @@ Not control-unit signals:
 - `CLK` is a top-level input to the PC, register file, RAM, CmpFlags, and OBR.
 - The IBR is loaded by the external keyboard/Enter, not by the control unit.
 - RAM `ld` can be tied to constant 1, since reading memory is harmless when the value is unused (see section 6).
+- CmpFlags is a datapath unit outside the control unit. It holds state (E and L), while the control unit is purely combinational.
 
 ### Truth table (instruction × signal)
 
@@ -85,6 +103,8 @@ Safety properties of this design:
 | Reorder opcodes 0000 to 0110 (ADDI, SUB, SLL move) | `BInvert` and `AluOp` become direct taps of opcode bits, with no gates |
 | Rewire the 1-bit ALU result mux (sum on inputs 0 and 1) | `AluOp = opcode[1:0]` works for every ALU instruction, including LW and SW |
 | Add a `Shift` input to the 10-bit ALU, driven by decoder output D6 | Replaces the AND gate on `AluOp` that used to select the shifter |
+| ALU flag outputs renamed `Zero` and `TrueNeg` | The ALU stays general-purpose. E and L are defined in CmpFlags |
+| CmpFlags kept as a datapath unit outside the control unit | State stays out of the purely combinational control unit |
 | Single 2-bit `WriteBackSrc` control, tapped from `{o3, o1}` | One 4:1 write-back mux, no gates, and no separate `MemToReg` or `IBRToReg` |
 | Dedicated `R7` output from the register file | No read-register muxes. One 10-bit mux on the ALU's A input |
 | Hybrid control unit: direct taps plus a 4-to-16 decoder | ALU-facing signals and the write-back select are free. Everything else is a readable OR of instructions |
@@ -120,8 +140,8 @@ The ALU needs only a handful of behaviours:
 
 The new ordering is built around two observations:
 
-1. **`o2` can be the B-invert bit.** Every instruction that needs B inverted (SUB, CMP) is placed in the `o2 = 1` half of the opcode space. Every other instruction that uses the ALU adder or logic has `o2 = 0`.
-2. **`o1 o0` can pick the function.** Within each half, the low two bits are `00`, `01`, `10`, `11`. If the 1-bit ALU's result mux is wired so inputs 0 and 1 both select the adder, then `00` and `01` are both "add", `10` is AND, and `11` is OR. That gives four add-type slots (ADD, ADDI, SUB, CMP), which is why they fit in pairs on either side of `o2`.
+- **`o2` can be the B-invert bit.** Every instruction that needs B inverted (SUB, CMP) is placed in the `o2 = 1` half of the opcode space. Every other instruction that uses the ALU adder or logic has `o2 = 0`.
+- **`o1 o0` can pick the function.** Within each half, the low two bits are `00`, `01`, `10`, `11`. If the 1-bit ALU's result mux is wired so inputs 0 and 1 both select the adder, then `00` and `01` are both "add", `10` is AND, and `11` is OR. That gives four add-type slots (ADD, ADDI, SUB, CMP), which is why they fit in pairs on either side of `o2`.
 
 SLL sits at 0110, where `o1 o0 = 10` would select AND on its own. That's fine because `Shift` overrides the result mux, so the adder/logic output is never used for SLL.
 
@@ -171,7 +191,25 @@ Bit 0's carry-in must be tied to `BInvert` (subtract = A + ~B + 1). Each higher 
 
 **LW and SW** need no special case. Their low bits (00 and 01) already mean "add" and `o2 = 0`, so `o3` is never consulted. The operand routing (A = R7, B = sign-extended imm) comes from the `R7` and `Imm` mux controls (decoder-generated), not from `AluOp`.
 
-**Flags.** `EqualTo` and `LessThan` come from the ALU on every instruction, but they are only latched when `CMP` is asserted, which is only true for opcode 0101 (D5).
+### ALU flag outputs and CmpFlags
+
+The ALU reports two raw facts about its result, with no knowledge of the ISA's flags:
+
+| ALU output | Meaning |
+|---|---|
+| `Zero` | result == 0 |
+| `TrueNeg` | exact result < 0, computed as `result[9] XOR overflow` |
+
+`Overflow` is an internal wire with no pin. `TrueNeg` is the sign of the exact (non-wrapped) result for any operation, which is why it is not simply `result[9]`: after an overflowing add or subtract, the raw MSB is the wrong sign.
+
+CmpFlags sits in the datapath, outside the control unit:
+
+| CmpFlags | Signals |
+|---|---|
+| Inputs | `Zero`, `TrueNeg` (from the ALU), `CMP` (enable from the control unit), `CLK` |
+| Outputs | `E` = latched `Zero`, `L` = latched `TrueNeg` |
+
+During a CMP the ALU computes A + ~B + 1, so `TrueNeg` is the sign of Rd − Rs, which is exactly Rd < Rs as signed values. The ISA's `L = (MSB of Rd − Rs) XOR overflow` follows directly. The flags are latched only when `CMP` is asserted (opcode 0101, D5), so `Zero` and `TrueNeg` on any other instruction never reach E and L.
 
 ---
 
@@ -207,16 +245,17 @@ A single 2-bit control picks what the register file receives. It is wired straig
 
 ---
 
-## 6. Review of the current datapath
+## 6. Review of the datapath
 
-### Looks correct
+### Looks correct (from the last screenshot)
 - PC feeds the instruction ROM, with a PC+1 adder (constant 1) and a branch adder (PC+1 + SignExt6(offset)).
 - The PC mux chooses between PC+1 and the branch target.
 - The A mux takes ReadData1 or R7, and the B mux takes ReadData2 or SignExt3(imm).
 - RAM address comes from the ALU result. RAM data-in and OBR data-in both come from ReadData1.
 - The write-back mux takes the ALU result, RAM output, and IBR.
-- CmpFlags takes the ALU's `EqualTo` and `LessThan`.
 - `Shift` has been added to the ALU, and the `Input` control signal has been removed.
+- The ALU flag outputs are now `Zero` and `TrueNeg`, and the control unit has been built.
+- `Halt` has been added, with the PC enable driven by NOT `Halt`.
 
 ### Verify in Logisim
 Mux input order can't be confirmed from a screenshot, so click each mux and check:
@@ -230,16 +269,16 @@ Mux input order can't be confirmed from a screenshot, so click each mux and chec
 
 Also check the following:
 - The old AND gate on `AluOp` inside the 10-bit ALU is removed, and `Shift` drives the result mux select.
+- `TrueNeg = result[9] XOR overflow` inside the ALU, with `Overflow` left as an internal wire.
+- The control unit output matches the truth table in section 1 for all 16 opcodes. Feeding each opcode in turn and comparing the outputs is a quick test.
 - The ROM and RAM data widths are 10 bits.
 - No two wires touch where they cross near the ReadData1 and R7 lines.
 
-### Still missing
-1. **`Halt` / PC enable.** The PC needs `en = NOT Halt`.
-2. **Clock.** There is no top-level `CLK` pin feeding the PC, register file, RAM, CmpFlags, and OBR.
-3. **E and L fed back to the control unit** for the `Branch` equation.
-4. **IBR input.** The IBR needs a 10-bit data source (an input pin on D), loaded by the external Enter rather than by the control unit.
-5. **OBR output.** Needs a display (hex digit display or output pin) on Q.
-6. **The control unit itself** (the `dummy` box). The opcode bits `[9:6]` are already routed to it.
+### Items to confirm
+- **Clock.** A top-level `CLK` pin must feed the PC, register file, RAM, CmpFlags, and OBR.
+- **E and L fed back to the control unit** for the `Branch` equation.
+- **IBR input.** The IBR needs a 10-bit data source (an input pin on D), loaded by the external Enter rather than by the control unit.
+- **OBR output.** Needs a display (hex digit display or output pin) on Q.
 
 ### Optional simplification
 - **`MemRead`** is not a needed control signal. Reading memory is harmless when the value is unused: the write-back mux only selects RAM for LW, and `RegWrite` gates everything else. Tie RAM `ld` to a constant 1. If your course requires an explicit `MemRead`, it equals D8.
@@ -253,3 +292,4 @@ The reorder changes encodings, so the ISA document needs these updates:
 - Machine-code encodings for the three benchmarks, wherever they use ADDI, SUB, or SLL.
 - The Immediate Addressing figure (page 8), which still shows ADDI as opcode 1010.
 - New design notes for the `AluOp` mapping and `WriteBackSrc`.
+- The ALU's flag outputs (`Zero`, `TrueNeg`) and how CmpFlags derives E and L from them.
