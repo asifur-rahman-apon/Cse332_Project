@@ -1,12 +1,12 @@
 import sys
 OPCODES = {
     "ADD":  "0000",
-    "SUB":  "0001",
+    "ADDI": "0001",
     "AND":  "0010",
     "OR":   "0011",
-    "SLL":  "0100",
+    "SUB":  "0100",
     "CMP":  "0101",
-    "ADDI": "0110",
+    "SLL":  "0110",
     "LW":   "1000",
     "SW":   "1001",
     "IN":   "1010",
@@ -92,6 +92,9 @@ def encode_i_type(instruction, rd, immediate):
         if immediate < -4 or immediate > 3:
             raise ValueError(instruction + " immediate must be between -4 and 3")
 
+    if instruction in ["LW", "SW"] and immediate < 0:
+        raise ValueError(instruction + " offset must be non-negative")
+
     
     immediate_binary = format(immediate & 0b111, "03b")
 
@@ -171,15 +174,21 @@ def assemble_line(line, address, labels):
         return None
 
     
-    parts = line.replace(",", " ").split()
+    parts = line.split(None, 1)
 
     instruction = parts[0]
-    operands = parts[1:]
+    operands = (
+        [operand.strip() for operand in parts[1].split(",")]
+        if len(parts) > 1 else []
+    )
 
     if instruction not in OPCODES:
         raise ValueError("Unknown instruction: " + instruction)
 
     fmt = FORMATS[instruction] # set format of current instruction
+
+    if fmt in ["R", "I"] and any(len(operand.split()) > 1 for operand in operands):
+        raise ValueError("Missing comma between operands")
 
     if fmt == "R":
 
